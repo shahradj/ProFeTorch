@@ -1,6 +1,6 @@
-# PropheTorch
+# ProFeTorch
 
-Prophet + Torch (geddit?).
+Prophet + Fastai + Torch (geddit?).
 
 Redoing Prophet's seasonality component in PyTorch and Fastai.
 
