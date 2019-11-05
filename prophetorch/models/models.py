@@ -10,6 +10,8 @@ from fastai.basics import Learner
 from .blocks import Seasonal, Trend, DefaultModel
 from ..data.data import create_db
 
+__all__ = ['Model']
+
 class Model(nn.Module):
     def __init__(self, model=None, breakpoints=None, y_n=7, m_n=5, w_n=0, loss=F.l1_loss, lr=0.5, wd=0):
         super().__init__()

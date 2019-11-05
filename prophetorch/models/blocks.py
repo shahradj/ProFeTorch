@@ -15,8 +15,8 @@ class Trend(nn.Module):
         super().__init__()
         self.bpoints = breakpoints
         self.init_layer = nn.Linear(1,1) # first linear bit
-        self.init_layer.weight.data = torch.Tensor([0.])
-        self.init_layer.bias.data = torch.Tensor([0.])
+        self.init_layer.weight.data = torch.Tensor([[0.]])
+        self.init_layer.bias.data = torch.Tensor([[0.]])
             
         if breakpoints:
             # create deltas which is how the gradient will change
@@ -67,7 +67,10 @@ class FourierModel(nn.Module):
         if n > 0:
             self.linear = nn.Linear(n, 1, bias=False)
             # initialise weight parameters
-            self.linear.weight.data = init
+            if init:
+                self.linear.weight.data = torch.Tensor(init)
+            else:
+                self.linear.weight.data = torch.Tensor(torch.zeros_like(self.linear.weight.data))
         
     def forward(self, x):
         if self.n > 0:
