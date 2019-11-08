@@ -11,7 +11,7 @@ class Trend(nn.Module):
     """
     Broken Trend model, with breakpoints as defined by user.
     """
-    def __init__(self, breakpoints=None):
+    def __init__(self, breakpoints:int=None):
         super().__init__()
         self.bpoints = breakpoints
         self.init_layer = nn.Linear(1,1) # first linear bit
@@ -44,7 +44,7 @@ class Trend(nn.Module):
             for j in range(self.wb.shape[1]):
                 self.wb[i,j] = self.params[i][j]
         
-    def forward(self, x):
+    def forward(self, x:torch.Tensor):
         if self.bpoints:
             self.__copy2array() # copy across parameters into matrix
             # get the line segment area (x_sec) for each x
@@ -59,20 +59,20 @@ class Trend(nn.Module):
 
 
 class FourierModel(nn.Module):
-    def __init__(self, p=365.25, n=7, init=None):
+    def __init__(self, p:float=365.25, n:int=7, init:torch.Tensor=None):
         super().__init__()
         self.p, self.n = p, n
         np = [(i+1, p) for i in range(n)]
         self.np = np
         if n > 0:
-            self.linear = nn.Linear(n, 1, bias=False)
+            self.linear = nn.Linear(n * 2, 1, bias=False)
             # initialise weight parameters
-            if init:
-                self.linear.weight.data = torch.Tensor(init)
+            if init is not None:
+                self.linear.weight.data = init
             else:
                 self.linear.weight.data = torch.Tensor(torch.zeros_like(self.linear.weight.data))
         
-    def forward(self, x):
+    def forward(self, x:torch.Tensor):
         if self.n > 0:
             cos = [torch.cos(2*np.pi*n*x/p) for n,p in self.np]
             sin = [torch.sin(2*np.pi*n*x/p) for n,p in self.np]
@@ -104,6 +104,7 @@ class Seasonal(nn.Module):
         w = torch.randn(1, idxs[-1]) * std
         w = torch.clamp(w, -2*std, 2*std)
         
+        # breakpoint()
         self.yearly = FourierModel(y_p, y_n, w[:,:idxs[0]])
         self.monthly = FourierModel(m_p, m_n, w[:,idxs[0]:idxs[1]])
         self.weekly = FourierModel(w_p, w_n, w[:,idxs[1]:idxs[2]])
@@ -123,7 +124,7 @@ class DefaultModel(nn.Module):
 
 
 class Squasher(nn.Module):
-    def __init__(self, low, high, alpha=0.01):
+    def __init__(self, low=0, high=1, alpha=0.01):
         super().__init__()
         self.L, self.H, self.alpha = low, high, alpha
     def forward(self, x): 
