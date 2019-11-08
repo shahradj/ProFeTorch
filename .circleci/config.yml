@@ -13,6 +13,11 @@ jobs:
         name: Test Modules
         command: |
           python -m nose2
+workflows:
+  version: 2
+  flows:
+    jobs:
+      - test
   # docker_build:
   #   docker:
   #     - image: ubuntu   # (1)
