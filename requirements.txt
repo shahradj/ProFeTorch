@@ -1,5 +1,5 @@
-pandas>=0.18.0
-numpy>=1.13.0
-pytorch>=1.1.0
-fastai>=1.0.30
-nose2>=0.9.0
+pandas
+numpy
+pytorch
+fastai
+nose2
