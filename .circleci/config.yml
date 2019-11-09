@@ -5,8 +5,14 @@ jobs:
       - image: sachinruk/miniconda3
     steps:
       - checkout
-      - run:  pip install -r requirements.txt --no-index
-      - run: python -m nose2
+      - run:
+          name: Install Requirements
+          command: |
+            pip install -r requirements.txt
+      - run:
+          name: Test Modules
+          command: |
+            python -m nose2
 workflows:
   version: 2
   flows:
