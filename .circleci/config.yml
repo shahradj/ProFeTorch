@@ -5,14 +5,20 @@ jobs:
       - image: sachinruk/miniconda3
     steps:
       - checkout
+      # - run:
+      #     name: Install Requirements
+      #     command: |
+      #       pip install -r requirements.txt
       - run:
-          name: Install Requirements
+          name: Build Docker
           command: |
-            pip install -r requirements.txt
-      - run:
-          name: Test Modules
-          command: |
-            python -m nose2
+            docker login -u $DOCKER_USER -p $DOCKER_PASS
+            chmod +x ./Docker/build_script.py
+            python3 ./Docker/build_script.py 0.1.$CIRCLE_BUILD_NUM
+      # - run:
+      #     name: Test Modules
+      #     command: |
+      #       python -m nose2
 workflows:
   version: 2
   flows:
