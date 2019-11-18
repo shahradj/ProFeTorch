@@ -5,6 +5,8 @@ jobs:
       - image: ubuntu
     steps:
       - checkout
+      - setup_remote_docker:
+          reusable: true
       # - run:
       #     name: Install Requirements
       #     command: |
