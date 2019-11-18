@@ -1,4 +1,4 @@
-FROM remimachina2/miniconda3
+FROM sachinruk/miniconda3
 
 RUN conda install -y \
     mkl-service \
@@ -10,7 +10,7 @@ RUN conda install -y \
     pandas \
     xlrd
 
-RUN conda install pytorch torchvision -c pytorch
+RUN conda install -y pytorch torchvision cpuonly -c pytorch
 RUN conda clean --yes --tarballs --packages --source-cache
 
 COPY jupyter_notebook_config.py /root/.jupyter/
