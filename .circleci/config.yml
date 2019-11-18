@@ -24,6 +24,7 @@ jobs:
       - run:
           name: Build Docker
           command: |
+            cd project/
             docker login -u $DOCKER_USER -p $DOCKER_PASS
             chmod +x ./Docker/build_script.py
             python3 ./Docker/build_script.py 0.1.$CIRCLE_BUILD_NUM
