@@ -3,7 +3,6 @@ jobs:
   test:
     docker:
       - image: ubuntu
-    working_directory: ~/build
     steps:
       - checkout
       - setup_remote_docker:
@@ -24,7 +23,9 @@ jobs:
 
       - run:
           name: Build Docker
+          working_directory: ~/project/
           command: |
+            echo $PWD
             docker login -u $DOCKER_USER -p $DOCKER_PASS
             chmod +x ./Docker/build_script.py
             python3 ./Docker/build_script.py 0.1.$CIRCLE_BUILD_NUM
