@@ -27,8 +27,8 @@ jobs:
           command: |
             echo $PWD
             docker login -u $DOCKER_USER -p $DOCKER_PASS
-            chmod +x ./Docker/build_script.py
-            python3 ./Docker/build_script.py 0.1.$CIRCLE_BUILD_NUM
+            chmod +x ./Docker/build_docker.py
+            python3 ./Docker/build_docker.py 0.1.$CIRCLE_BUILD_NUM
       # - run:
       #     name: Test Modules
       #     command: |
@@ -62,5 +62,5 @@ workflows:
   #     # build and push Docker image
   #     - run: |
   #         docker login -u $DOCKER_USER -p $DOCKER_PASS
-  #         chmod +x build_script.py
-  #         python3 build_script.py 0.1.$CIRCLE_BUILD_NUM
+  #         chmod +x build_docker.py
+  #         python3 build_docker.py 0.1.$CIRCLE_BUILD_NUM
