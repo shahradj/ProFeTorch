@@ -116,7 +116,7 @@ class DefaultModel(nn.Module):
     def __init__(self, breakpoints=None, y_n=7, m_n=5, w_n=0):
         super().__init__()
         self.trend = Trend(breakpoints)
-        self.seasonal = FourierModel(y_n, m_n, w_n)
+        self.seasonal = Seasonal(y_n, m_n, w_n)
 
     def forward(self, x):
         return self.seasonal(x) +self.trend(x)
