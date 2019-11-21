@@ -15,29 +15,64 @@ class TimeSeries(Dataset):
     def __getitem__(self, i):
         return torch.Tensor([self.x[i]]), torch.Tensor([self.y[i]])
     
+MILISECONDS_IN_DAY = 1e9*3600*24
 def convert_date(dates):
-    MILISECONDS_IN_DAY = 1e9*3600*24
     dates = dates.astype(int) / MILISECONDS_IN_DAY
     return torch.Tensor(dates).squeeze()[:,None]
 
-class DataFrame(Dataset):
-    def __init__(self, df):
-        super().__init__()
-        t = convert_date(df['date'].values)
+def get_moments(df):
+    df.date = df.date.astype(int) / MILISECONDS_IN_DAY 
+    mean = df.mean()
+    std = df.std()
+    moments = {
+        't': [mean['date'], std['date']],
+        'y': [mean['y'], std['y']]
+        }
+    mean.drop(['date', 'y'], inplace=True)
+    std.drop(['date', 'y'], inplace=True)
+    
+    if len(mean) > 0: # there are x variables
+        moments['x'] = [mean.values[None,:], std.values[None,:]]
+        
+    return moments
+    
+def create_tensors(df, moments, predict=False):
+    """
+    converts a pandas dataframe to pytorch tensors
+    """
+    # get time tensor
+    t = convert_date(df['date'].values)
+    data = {'t': t}
+    df.drop(['date'], axis=1, inplace=True)
+    
+    # get y tensor (if not in predict stage)
+    if not predict: # 'y' in df.columns and
         y = torch.Tensor(df['y'].values).squeeze()[:,None]
-        df.drop(['date', 'y'], axis=1, inplace=True)
-        
-        vars = {'t': t, 'y': y}
-        if df.shape[1] > 0:
-            x = torch.Tensor(df.values).float()
-            vars['x'] = x
-          
-        self.data = vars
-        # if moments is None:
-        #     moments = {k: [v.mean(), v.std()] for k,v in vars}
-        # self.moments = moments
-        
-        # self.data = {k: (vars[k] - mean) / std for k, (mean, std) in moments}
+        df.drop(['y'], axis=1, inplace=True)
+        data['y'] = y
+
+    # add x if it's available
+    if df.shape[1] > 0:
+        x = torch.Tensor(df.values).float()
+        data['x'] = x
+       
+    # # calculate the mean and std of x and y (t already calculated)
+    # if 'y' not in moments and not predict:
+    #     moments['y'] = [data['y'].mean(), data['y'].std()]
+    # if 'x' in data and 'x' not in moments:
+    #     moments['x'] = [data['x'].mean(dim=0), data['x'].std(dim=0)]
+    #     # moments = {k: [v.mean(), v.std()] for k,v in data.items()}
+    
+    # standardise all data
+    # data = {k: (data[k] - mean) / std for k, (mean, std) in data.items()}
+    data = {k: (v - moments[k][0]) / moments[k][1] for k, v in data.items()}
+    
+    return data, moments
+    
+class DataFrame(Dataset):
+    def __init__(self, df, moments=None):
+        super().__init__()
+        self.data, self.moments = create_tensors(df, moments)
     
     def __len__(self):
         return len(self.data['t'])
@@ -49,20 +84,11 @@ class DataFrame(Dataset):
             return self.data['t'][i], self.data['y'][i]
 
     
-def create_db(df=None, t=None, y=None, t_val=None, y_val=None, train_p=0.8, bs=96):
-    if df is None:
-        if t_val is None:
-            train_len = int(train_p*len(y))
-            train_ds = TimeSeries(t[:train_len], y[:train_len])
-            val_ds = TimeSeries(t[train_len:], y[train_len:])
-        else:
-            train_ds = TimeSeries(t, y)
-            val_ds = TimeSeries(t_val, y_val)
-    else:
-        train_len = int(train_p*len(df))
-        df.reset_index(drop=True, inplace=True)
-        train_ds = DataFrame(df.iloc[:train_len])
-        val_ds = DataFrame(df.iloc[train_len:])
+def create_db(df, train_p=0.8, bs=96, moments=None):
+    train_len = int(train_p*len(df))
+    df.reset_index(drop=True, inplace=True)
+    train_ds = DataFrame(df.iloc[:train_len], moments)
+    val_ds = DataFrame(df.iloc[train_len:], moments)
     
     bs = min(bs, len(train_ds))
     val_bs = min(bs, len(val_ds))

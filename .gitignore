@@ -3,3 +3,4 @@
 .cache
 .mypy_cache
 .vscode/
+*pycache__/
