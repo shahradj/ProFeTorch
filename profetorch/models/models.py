@@ -16,7 +16,7 @@ class Model(nn.Module):
     def __init__(self, df, model=DefaultModel, model_args=None, loss=F.l1_loss, bs=128, lr=0.3, wd=0):
         """
         parameters:
-        - dates: dates used in training dataset.
+        - df: dataset used in training dataset.
         - model (optional): how to model time series. Default: DefaultModel.
         - loss (optional): loss function: Default l1 loss.
         - bs (optional): batchsize
@@ -25,14 +25,8 @@ class Model(nn.Module):
         super().__init__()
         self.moments = get_moments(df.copy())
         scale = self.moments['t'][1]
-        # mean, scale = ts.mean(), ts.std()
-        
-        if model_args:
-            model_args['scale'] = scale
-        else:
-            model_args = {'scale': scale}
-            
-        self.model = model(**model_args)
+
+        self.model = model(self.moments, **model_args)
         self.loss = loss
         self.lr = lr
         self.wd = wd
@@ -90,21 +84,10 @@ class Model(nn.Module):
         # return lr_to_use
         
     def predict(self, df):
-        # breakpoint()
         x, _ = create_tensors(df.copy(), self.moments, predict=True)
         mean, sd = self.moments['y']
         y = sd * self.model(**x) + mean
         return y.detach().cpu().numpy()
-        
-        # t = convert_date(df['date'].values)
-        # df = df.drop('date', axis=1)
-        # if df.shape[1] > 0:
-        #     x = torch.Tensor(df.values)
-        #     if len(x.shape) < 2:
-        #         x = x[:,None]
-        #     return self.model(t, x)
-        # else:
-        #     return self.model(t)
     
     def forward(self, *args):
         return self.model(*args)
@@ -112,7 +95,5 @@ class Model(nn.Module):
     def create_learner(self, df):
         db = create_db(df, bs=self.bs, moments=self.moments)
         learner = Learner(db, self.model, loss_func=self.loss, wd=self.wd)
-        
-        # if 'x' in db.train_ds.data: self.x = True
         return learner
         

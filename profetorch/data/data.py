@@ -2,6 +2,8 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from fastai.data_block import DataBunch, DatasetType
 
+tt = torch.Tensor
+
 __all__ = ['create_db']
 
 class TimeSeries(Dataset):
@@ -21,18 +23,19 @@ def convert_date(dates):
     return torch.Tensor(dates).squeeze()[:,None]
 
 def get_moments(df):
-    df.date = df.date.astype(int) / MILISECONDS_IN_DAY 
+    df.ds = df.ds.astype(int) / MILISECONDS_IN_DAY 
     mean = df.mean()
     std = df.std()
     moments = {
-        't': [mean['date'], std['date']],
+        't': [mean['ds'], std['ds']],
         'y': [mean['y'], std['y']]
         }
-    mean.drop(['date', 'y'], inplace=True)
-    std.drop(['date', 'y'], inplace=True)
+    mean.drop(['ds', 'y'], inplace=True)
+    std.drop(['ds', 'y'], inplace=True)
     
     if len(mean) > 0: # there are x variables
-        moments['x'] = [mean.values[None,:], std.values[None,:]]
+        moments['x'] = [tt(mean.values[None,:]), 
+                        tt(std.values[None,:])]
         
     return moments
     
@@ -40,10 +43,11 @@ def create_tensors(df, moments, predict=False):
     """
     converts a pandas dataframe to pytorch tensors
     """
+    # breakpoint()
     # get time tensor
-    t = convert_date(df['date'].values)
+    t = convert_date(df['ds'].values)
     data = {'t': t}
-    df.drop(['date'], axis=1, inplace=True)
+    df.drop(['ds'], axis=1, inplace=True)
     
     # get y tensor (if not in predict stage)
     if not predict: # 'y' in df.columns and
@@ -55,16 +59,8 @@ def create_tensors(df, moments, predict=False):
     if df.shape[1] > 0:
         x = torch.Tensor(df.values).float()
         data['x'] = x
-       
-    # # calculate the mean and std of x and y (t already calculated)
-    # if 'y' not in moments and not predict:
-    #     moments['y'] = [data['y'].mean(), data['y'].std()]
-    # if 'x' in data and 'x' not in moments:
-    #     moments['x'] = [data['x'].mean(dim=0), data['x'].std(dim=0)]
-    #     # moments = {k: [v.mean(), v.std()] for k,v in data.items()}
     
-    # standardise all data
-    # data = {k: (data[k] - mean) / std for k, (mean, std) in data.items()}
+    
     data = {k: (v - moments[k][0]) / moments[k][1] for k, v in data.items()}
     
     return data, moments

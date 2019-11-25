@@ -15,10 +15,8 @@ class Trend(nn.Module):
         super().__init__()
         self.bpoints = breakpoints
         self.init_layer = nn.Linear(1,1) # first linear bit
-        # self.init_layer.weight.data = torch.Tensor([[0.]])
-        # self.init_layer.bias.data = torch.Tensor([[0.]])
             
-        if breakpoints:
+        if breakpoints is not None:
             # create deltas which is how the gradient will change
             deltas = torch.zeros(len(breakpoints)) # initialisation
             self.deltas = nn.Parameter(deltas) # make it a parameter
@@ -62,20 +60,11 @@ TWOPI = 2*np.pi
 class FourierModel(nn.Module):
     def __init__(self, p:float=365.25, scale:float=1, n:int=7):
         super().__init__()
-        # self.p, self.n = , n
         self.np = [(i+1, p/scale) for i in range(n)]
-        # np = np
         if n > 0:
             self.linear = nn.Linear(n * 2, 1, bias=False)
-        self.scale_required = True
-            # # initialise weight parameters
-            # if init is not None:
-            #     self.linear.weight.data = init
-            # else:
-            #     self.linear.weight.data = torch.Tensor(torch.zeros_like(self.linear.weight.data))
-        
+            
     def forward(self, t:torch.Tensor):
-        # breakpoint()
         if len(self.np) > 0:
             cos = [torch.cos(TWOPI * n * t / p) for n,p in self.np]
             sin = [torch.sin(TWOPI * n * t / p) for n,p in self.np]
@@ -98,33 +87,12 @@ class Seasonal(nn.Module):
     def __init__(self, y_n=7, m_n=5, w_n=0, 
                  y_p=365.25, m_p=30.5, w_p=7, scale=1):
         super().__init__()
-        # # Calculate Xavier Glorot initialisation
-        # fourier_components = 2 * np.array([y_n, m_n, w_n])
-        # idxs = np.cumsum(fourier_components)
-        # fan_in = idxs[-1] + 1 # +1 due to trend
-        # fan_out = 1
-        # std = np.sqrt(2/(fan_in + fan_out))
-        # w = torch.randn(1, idxs[-1]) * std
-        # w = torch.clamp(w, -2*std, 2*std)
-        
-        # breakpoint()
         self.yearly = FourierModel(y_p, scale, y_n) # , w[:,:idxs[0]]
         self.monthly = FourierModel(m_p, scale, m_n) # w[:,idxs[0]:idxs[1]]
         self.weekly = FourierModel(w_p, scale, w_n) # w[:,idxs[1]:idxs[2]]
         
     def forward(self, t):
         return self.yearly(t) + self.monthly(t) + self.weekly(t)
-    
-class DefaultModel(nn.Module):
-    def __init__(self, breakpoints=None, y_n=7, m_n=5, w_n=0, scale=1, l=None, h=None):
-        super().__init__()
-        self.trend = Trend(breakpoints)
-        self.seasonal = Seasonal(y_n, m_n, w_n, scale=scale)
-        self.squash = Squasher(l, h)
-
-    def forward(self, t):
-        # breakpoint()
-        return self.squash(self.seasonal(t) +self.trend(t))
         
 
 class Squasher(nn.Module):
@@ -135,6 +103,7 @@ class Squasher(nn.Module):
         if high is not None:
             high = (high - mean) / sd
         self.L, self.H, self.alpha = low, high, alpha
+        
     def forward(self, t): 
         if self.L is not None:
             t[t < self.L] = self.alpha * (t[t < self.L] - self.L) + self.L
@@ -172,7 +141,30 @@ class HolidayRange(nn.Module):
 class LinearX(nn.Module):
     def __init__(self, dims):
         super().__init__()
-        self.linear = nn.Linear(dims, 1, bias=False)
+        if dims > 0:
+            self.linear = nn.Linear(dims, 1, bias=False)
         
     def forward(self, x):
-        return self.linear(x)
+        if x is not None:
+            return self.linear(x)
+        else:
+            return 0
+    
+
+class DefaultModel(nn.Module):
+    def __init__(self, moments, breakpoints=None, y_n=7, m_n=5, w_n=0, l=None, h=None):
+        super().__init__()
+        if 'x' in moments:
+            dims = moments['x'][0].shape[1]
+        else:
+            dims = 0
+
+        self.trend = Trend(breakpoints)
+        self.seasonal = Seasonal(y_n, m_n, w_n, scale=moments['t'][1])
+        self.linear = LinearX(dims)
+        self.squash = Squasher(l, h, *moments['y'])
+
+    def forward(self, t, x=None):
+        prediction = self.seasonal(t) + self.trend(t) + self.linear(x)
+        prediction = self.squash(prediction)
+        return prediction
