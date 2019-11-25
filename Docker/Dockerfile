@@ -11,6 +11,7 @@ RUN conda install -y \
     xlrd
 
 RUN conda install -y pytorch torchvision cpuonly -c pytorch
+RUN pip install fastai
 RUN conda clean --yes --tarballs --packages --source-cache
 
 COPY jupyter_notebook_config.py /root/.jupyter/
