@@ -28,6 +28,7 @@ def get_moments(df):
     std = df.std()
     moments = {
         't': [mean['ds'], std['ds']],
+        't_range': [df.ds.min(), df.ds.max()],
         'y': [mean['y'], std['y']]
         }
     mean.drop(['ds', 'y'], inplace=True)

@@ -5,21 +5,33 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from ..data import convert_date
+
 __all__ = ['DefaultModel', 'Trend', 'FourierModel', 'Seasonal', 'Squasher', 'Holiday', 'HolidayRange']
 
 class Trend(nn.Module):
     """
     Broken Trend model, with breakpoints as defined by user.
     """
-    def __init__(self, breakpoints:int=None):
+    def __init__(self, breakpoints:int=None, moment=None):
         super().__init__()
-        self.bpoints = breakpoints
         self.init_layer = nn.Linear(1,1) # first linear bit
             
         if breakpoints is not None:
+            if isinstance(breakpoints, int):
+                # range = moment['t_range'][1] - moment['t_range'][0]
+                # breakpoints = torch.rand(breakpoint)*range + moment['t_range'][0]
+                if breakpoints > 0:
+                    breakpoints = np.linspace(*moment['t_range'], breakpoints+1, endpoint=False)[1:]
+                else:
+                    breakpoints = None
+            else:
+                breakpoints = convert_date(breakpoints)
             # create deltas which is how the gradient will change
             deltas = torch.zeros(len(breakpoints)) # initialisation
             self.deltas = nn.Parameter(deltas) # make it a parameter
+        
+        self.bpoints = breakpoints
         
     def __copy2array(self):
         """
@@ -43,7 +55,7 @@ class Trend(nn.Module):
                 self.wb[i,j] = self.params[i][j]
         
     def forward(self, t:torch.Tensor):
-        if self.bpoints:
+        if self.bpoints is not None:
             self.__copy2array() # copy across parameters into matrix
             # get the line segment area (x_sec) for each x
             x_sec = t >= self.bpoints
@@ -159,7 +171,7 @@ class DefaultModel(nn.Module):
         else:
             dims = 0
 
-        self.trend = Trend(breakpoints)
+        self.trend = Trend(breakpoints, moments)
         self.seasonal = Seasonal(y_n, m_n, w_n, scale=moments['t'][1])
         self.linear = LinearX(dims)
         self.squash = Squasher(l, h, *moments['y'])
