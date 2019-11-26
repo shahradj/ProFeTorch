@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 from ..data import convert_date
 
-__all__ = ['DefaultModel', 'Trend', 'FourierModel', 'Seasonal', 'Squasher', 'Holiday', 'HolidayRange']
+__all__ = ['DefaultModel', 'DefaultQModel', 'Trend', 'FourierModel', 'Seasonal', 'Squasher', 'Holiday', 'HolidayRange']
 
 class Trend(nn.Module):
     """
@@ -179,4 +179,21 @@ class DefaultModel(nn.Module):
     def forward(self, t, x=None):
         prediction = self.seasonal(t) + self.trend(t) + self.linear(x)
         prediction = self.squash(prediction)
+        return prediction
+    
+class DefaultQModel(nn.Module):
+    def __init__(self, moments, breakpoints=None, y_n=7, m_n=5, w_n=0, l=None, h=None, quantiles=[0.05, 0.5, 0.95]):
+        super().__init__()
+        assert 0.5 in quantiles, f'0.5 needs to be in quantiles. Provided {quantiles} as quantiles.'
+        self.idx = quantiles.index(0.5)
+        signs = [q-0.5 for q in quantiles]
+        self.signs = torch.Tensor([-1 if s<0 else 1 for i,s in enumerate(signs) if i != self.idx])[None,:]
+        self.idxs = [i for i in range(len(quantiles)) if i != self.idx]
+        self.models = [DefaultModel(moments, breakpoints, y_n, m_n, w_n, l, h) for _ in quantiles]
+        
+    def forward(self, t, x=None):
+        prediction = torch.cat([m(t,x) for m in self.models], -1)
+        median = prediction[:, [self.idx]]
+        prediction[:, self.idxs] = median + F.softplus(prediction[:, self.idxs]) * self.signs
+            
         return prediction

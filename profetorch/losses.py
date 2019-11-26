@@ -27,7 +27,7 @@ def q_loss(y_pred, y, quantiles = [0.05, 0.5, 0.95], weights=None):
             e += weighted_loss(tilted_loss(pred, y, q), weights)   
         return e.mean()
     else:
-        return weighted_loss(tilted_loss(y_pred, y, q), weights)
+        return weighted_loss(tilted_loss(y_pred, y, quantiles), weights)
 
 def tilted_loss(y_pred, y, q=0.5):
     e = (y - y_pred)

@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from functools import partial
 
 import torch
 import torch.nn as nn
@@ -7,13 +8,14 @@ import torch.nn.functional as F
 
 from fastai.basics import Learner
 
-from .blocks import DefaultModel
+from .blocks import DefaultModel, DefaultQModel
 from ..data.data import create_db, create_tensors, get_moments
+from ..losses import q_loss
 
 __all__ = ['Model']
 
 class Model(nn.Module):
-    def __init__(self, df, model=DefaultModel, model_args=None, loss=F.l1_loss, bs=128, lr=0.3, wd=0):
+    def __init__(self, df, model=None, model_args=None, quantiles=[0.05, 0.5, 0.95], loss=None, bs=128, lr=0.3, wd=0):
         """
         parameters:
         - df: dataset used in training dataset.
@@ -24,10 +26,13 @@ class Model(nn.Module):
         """
         super().__init__()
         self.moments = get_moments(df.copy())
-        scale = self.moments['t'][1]
 
-        self.model = model(self.moments, **model_args)
-        self.loss = loss
+        if loss is None:
+            self.model = DefaultQModel(self.moments, **model_args, quantiles=quantiles)
+            self.loss = partial(q_loss, quantiles=quantiles)
+        else:
+            self.model = DefaultModel(self.moments, **model_args)
+            self.loss = loss
         self.lr = lr
         self.wd = wd
         self.bs = bs
