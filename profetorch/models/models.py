@@ -7,8 +7,8 @@ import torch.nn.functional as F
 
 from fastai.basics import Learner
 
-from .blocks import Seasonal, Trend, DefaultModel
-from ..data.data import create_db, convert_date, create_tensors, get_moments
+from .blocks import DefaultModel
+from ..data.data import create_db, create_tensors, get_moments
 
 __all__ = ['Model']
 
