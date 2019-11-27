@@ -4,7 +4,7 @@ from fastai.data_block import DataBunch, DatasetType
 
 tt = torch.Tensor
 
-__all__ = ['create_db', 'create_tensors', 'get_moments']
+__all__ = ['create_db', 'create_tensors', 'get_moments', 'convert_date']
 
 class TimeSeries(Dataset):
     def __init__(self, x, y):
