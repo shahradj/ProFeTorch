@@ -52,7 +52,7 @@ def create_tensors(df, moments, predict=False):
     
     # get y tensor (if not in predict stage)
     if not predict: # 'y' in df.columns and
-        y = torch.Tensor(df['y'].values).squeeze()[:,None]
+        y = torch.Tensor(df['y'].values).reshape(-1, 1)
         df.drop(['y'], axis=1, inplace=True)
         data['y'] = y
 
