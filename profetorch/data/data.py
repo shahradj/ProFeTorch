@@ -20,7 +20,7 @@ class TimeSeries(Dataset):
 MILISECONDS_IN_DAY = 1e9*3600*24
 def convert_date(dates):
     dates = dates.astype(int) / MILISECONDS_IN_DAY
-    return torch.Tensor(dates).squeeze()[:,None]
+    return torch.Tensor(dates).reshape(-1,1)
 
 def get_moments(df):
     df.ds = df.ds.astype(int) / MILISECONDS_IN_DAY 
