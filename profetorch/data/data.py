@@ -2,6 +2,8 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from fastai.data_block import DataBunch, DatasetType
 
+import warnings
+
 tt = torch.Tensor
 
 __all__ = ['create_db', 'create_tensors', 'get_moments', 'convert_date']
@@ -34,9 +36,18 @@ def get_moments(df):
     mean.drop(['ds', 'y'], inplace=True)
     std.drop(['ds', 'y'], inplace=True)
     
+    for k, v in moments.items():
+        if v[1] == 0:
+            warnings.warn(f'Standard deviation of {k} is 0. Resetting to 1.')
+            moments[k][1] = 1.0
+            
     if len(mean) > 0: # there are x variables
         moments['x'] = [tt(mean.values[None,:]), 
                         tt(std.values[None,:])]
+        if any(moments['x'][1] == 0):
+            idx = moments['x'][1] == 0
+            moments['x'][1][idx] = 1
+            warnings.warn('Standard deviation of some x feature is 0. Resetting to 1.')    
         
     return moments
     
@@ -44,7 +55,6 @@ def create_tensors(df, moments, predict=False):
     """
     converts a pandas dataframe to pytorch tensors
     """
-    # breakpoint()
     # get time tensor
     t = convert_date(df['ds'].values)
     data = {'t': t}
@@ -89,5 +99,4 @@ def create_db(df, train_p=0.8, bs=96, moments=None):
     
     bs = min(bs, len(train_ds))
     val_bs = min(bs, len(val_ds))
-    # breakpoint()
     return DataBunch.create(train_ds, val_ds, bs=bs, val_bs=val_bs)
