@@ -189,7 +189,10 @@ class DefaultQModel(nn.Module):
         signs = [q-0.5 for q in quantiles]
         self.signs = torch.Tensor([-1 if s<0 else 1 for i,s in enumerate(signs) if i != self.idx])[None,:]
         self.idxs = [i for i in range(len(quantiles)) if i != self.idx]
-        self.models = nn.ModuleList([DefaultModel(moments, breakpoints, y_n, m_n, w_n) for _ in quantiles])
+        median_args = {'y_n': y_n, 'm_n': m_n, 'w_n': w_n}
+        other_args = {'y_n': 0, 'm_n': 0, 'w_n': 0}
+        args = [median_args if q==0.5 else other_args for q in quantiles]
+        self.models = nn.ModuleList([DefaultModel(moments, breakpoints, **arg) for arg in args])
         self.squash = Squasher(l, h, *moments['y'])
         
     def forward(self, t, x=None):
