@@ -13,20 +13,25 @@ from ..data.data import create_db, create_tensors, get_moments
 from ..losses import q_loss
 
 __all__ = ['Model']
-
+    
 class L1Loss(LearnerCallback):
-    def __init__(self, learn, beta=0.2):
+    def __init__(self, learn, beta=1e-2):
         super().__init__(learn)
         self.beta = beta
     
-    def on_backward_begin(self, **kwargs):
-        weights = [torch.abs(v).sum() for k,v in self.learn.model.named_parameters() 
-                   if not 'bias' in k]
-        last_loss = kwargs['last_loss'] + self.beta * sum(weights)
-        return {'last_loss': last_loss}
+    def on_backward_end(self, **kwargss):
+        weights = {k:v for k,v in self.learn.model.named_parameters() 
+                   if not 'bias' in k}
+        
+        for k, v in weights.items():
+            sign = torch.ones_like(v)
+            sign[v<0] = -1
+            v = v - self.beta * sign
+            self.learn.model.state_dict()[k].copy_(v)
+
 
 class Model(nn.Module):
-    def __init__(self, df, model=None, model_args=None, quantiles=[0.05, 0.5, 0.95], loss=None, bs=128, lr=0.3, alpha=0, beta=0.2):
+    def __init__(self, df, model=None, model_args=None, quantiles=[0.05, 0.5, 0.95], loss=None, bs=128, lr=0.3, alpha=0, beta=0.1):
         """
         parameters:
         - df: dataset used in training dataset.
