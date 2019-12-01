@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from fastai.basics import Learner
+from fastai.basics import Learner, LearnerCallback
 
 from .blocks import DefaultModel, DefaultQModel
 from ..data.data import create_db, create_tensors, get_moments
@@ -14,15 +14,26 @@ from ..losses import q_loss
 
 __all__ = ['Model']
 
+class L1Loss(LearnerCallback):
+    def __init__(self, learn, beta=0.2):
+        super().__init__(learn)
+        self.beta = beta
+    
+    def on_backward_begin(self, **kwargs):
+        weights = [torch.abs(v).sum() for k,v in self.learn.model.named_parameters() 
+                   if not 'bias' in k]
+        last_loss = kwargs['last_loss'] + self.beta * sum(weights)
+        return {'last_loss': last_loss}
+
 class Model(nn.Module):
-    def __init__(self, df, model=None, model_args=None, quantiles=[0.05, 0.5, 0.95], loss=None, bs=128, lr=0.3, wd=0):
+    def __init__(self, df, model=None, model_args=None, quantiles=[0.05, 0.5, 0.95], loss=None, bs=128, lr=0.3, alpha=0, beta=0.2):
         """
         parameters:
         - df: dataset used in training dataset.
         - model (optional): how to model time series. Default: DefaultModel.
         - loss (optional): loss function: Default l1 loss.
         - bs (optional): batchsize
-        - wd (optional): weight decay
+        - alpha (optional): weight decay
         """
         super().__init__()
         self.moments = get_moments(df.copy())
@@ -34,13 +45,17 @@ class Model(nn.Module):
             self.model = DefaultModel(self.moments, **model_args)
             self.loss = loss
         self.lr = lr
-        self.wd = wd
+        self.alpha = alpha
+        self.beta = beta
         self.bs = bs
         
     def fit(self, df=None, epochs=20):
         # self.find_appropriate_lr(df)
         learner = self.create_learner(df)
-        learner.fit(epochs, self.lr)
+        cb = L1Loss(learner, self.beta)
+        # breakpoint()
+        
+        learner.fit_one_cycle(epochs, self.lr, callbacks=cb)
 
         self.model = learner.model
         
@@ -55,6 +70,6 @@ class Model(nn.Module):
     
     def create_learner(self, df):
         db = create_db(df, bs=self.bs, moments=self.moments)
-        learner = Learner(db, self.model, loss_func=self.loss, wd=self.wd)
+        learner = Learner(db, self.model, loss_func=self.loss, wd=self.alpha)
         return learner
         
