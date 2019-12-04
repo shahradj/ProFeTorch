@@ -44,7 +44,7 @@ def get_moments(df):
     if len(mean) > 0: # there are x variables
         moments['x'] = [tt(mean.values[None,:]), 
                         tt(std.values[None,:])]
-        if any(moments['x'][1] == 0):
+        if (moments['x'][1] == 0).any():
             idx = moments['x'][1] == 0
             moments['x'][1][idx] = 1
             warnings.warn('Standard deviation of some x feature is 0. Resetting to 1.')    
